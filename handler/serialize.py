@@ -14,6 +14,7 @@ HEADER_NAMES = [
 ]
 JSON_KEY_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'town_kana', 'prefecture', 'city', 'town']
 WITHOUT_TOWN_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'town_kana', 'prefecture', 'city']
+WITHOUT_TOWN_KANA_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'prefecture', 'city']
 
 
 def convert_csv(file_path: str):
@@ -26,6 +27,13 @@ def convert_csv(file_path: str):
 
     if not town_multiple_series.empty:
       series = town_multiple_series.groupby(WITHOUT_TOWN_NAMES)['town'].apply(lambda x: '、'.join(x)).reset_index()
+
+      if len(series) > 1:
+        town_multiple_series['town_kana'] = town_multiple_series.groupby(
+          WITHOUT_TOWN_KANA_NAMES)['town_kana'].transform(lambda x: ''.join(x))
+        town_multiple_series['town'] = town_multiple_series.groupby(
+          WITHOUT_TOWN_KANA_NAMES)['town'].transform(lambda x: ''.join(x))
+        series = town_multiple_series.drop_duplicates()
     else:
       series = df[df['postal_code'] == zip_code][JSON_KEY_NAMES]
 
