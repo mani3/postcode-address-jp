@@ -13,8 +13,8 @@ HEADER_NAMES = [
   'town_partial', 'town_koaza', 'town_chome', 'town_multiple', 'update_type', 'update_reason'
 ]
 JSON_KEY_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'town_kana', 'prefecture', 'city', 'town']
-WITHOUT_TOWN_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'town_kana', 'prefecture', 'city']
-WITHOUT_TOWN_KANA_NAMES = ['postal_code', 'prefecture_kana', 'city_kana', 'prefecture', 'city']
+WITHOUT_TOWN_NAMES = [k for k in JSON_KEY_NAMES if k != 'town_kana']
+WITHOUT_TOWN_KANA_NAMES = [k for k in JSON_KEY_NAMES if k != 'town']
 
 
 def convert_csv(file_path: str):
@@ -23,21 +23,22 @@ def convert_csv(file_path: str):
 
   addresses = {}
   for zip_code in tqdm(zip_codes):
-    town_multiple_series = df[(df['postal_code'] == zip_code) & (df['town_multiple'] == '0')]
+    address_df = df[(df['postal_code'] == zip_code) & (df['town_multiple'] == '0')].copy(deep=True)
+    address_df = address_df[JSON_KEY_NAMES]
 
-    if not town_multiple_series.empty:
-      series = town_multiple_series.groupby(WITHOUT_TOWN_NAMES)['town'].apply(lambda x: '、'.join(x)).reset_index()
-
-      if len(series) > 1:
-        town_multiple_series['town_kana'] = town_multiple_series.groupby(
+    if not address_df.empty:
+      if len(address_df) > 1:
+        address_df['town_kana'] = address_df.groupby(
           WITHOUT_TOWN_KANA_NAMES)['town_kana'].transform(lambda x: ''.join(x))
-        town_multiple_series['town'] = town_multiple_series.groupby(
-          WITHOUT_TOWN_KANA_NAMES)['town'].transform(lambda x: ''.join(x))
-        series = town_multiple_series.drop_duplicates()
+        address_df['town'] = address_df.groupby(
+          WITHOUT_TOWN_NAMES)['town'].transform(lambda x: ''.join(x))
+        address_df = address_df.drop_duplicates()
+      else:
+        pass
     else:
-      series = df[df['postal_code'] == zip_code][JSON_KEY_NAMES]
+      address_df = df[df['postal_code'] == zip_code]
 
-    addresses[zip_code] = json.loads(series.to_json(orient="records"))
+    addresses[zip_code] = json.loads(address_df.to_json(orient="records"))
   return addresses
 
 
